@@ -1,6 +1,11 @@
 import RPi.GPIO as GPIO
 from time import sleep
 from gpiozero import Buzzer
+from gpiozero import LED
+from tkinter import *
+import PIL
+from PIL import Image, ImageTk
+
 
 
 import smtplib
@@ -26,14 +31,30 @@ PASSWORD = 'devpword'
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(11, GPIO.IN)         #Read output from PIR motion sensor
-GPIO.setup(3, GPIO.OUT)         #LED output pin
-GPIO.setup(37,GPIO.OUT)
-
-GPIO.output(37,0)
 buzzer = Buzzer(13)
+led = LED(18)
+led.off()
+trigger = False
 
+caught = False
+idx = 0  # loop index
 
+def triggerOn():
+    global trigger
+    trigger = True
+    print("trigger on")
+    
+    
+def triggerOff():
+    global trigger
+    trigger = False
+    print("trigger off")
 
+def message():
+    if trigger:
+        print("Cerberus Online.")
+    else:
+        print("Cerberus Offline.")
 
 def notification():
     email = 'johnjjacob78@gmail.com' # read contacts
@@ -84,29 +105,75 @@ def notification():
     s.quit()
     
 def Guard():
-    j=0
-    while True:
-        i=GPIO.input(11)
-        if i==0:                 #When output from motion sensor is LOW
-            print ("No intruders")
-            GPIO.output(3, 0)  #Turn OFF LED
-            sleep(0.5)
-        elif i==1:               #When output from motion sensor is HIGH
-            print ("Intruder detected")
-            camera.capture('/home/pi/RPI Security System/Captured Images/RPI Footage%s.jpg'% j)
-            camera.capture('/home/pi/RPI Security System/Sending/Temp RPI Footage.jpg')
-            GPIO.output(3, 1)  #Turn ON LED
-            notification()
-            buzzer.on()
-            sleep(1)
-            buzzer.off()
-            sleep(1)
+    j=0 #res
+    
+    i = 0 #reset PIR sensor
+    i=GPIO.input(11)
+    if i==0:                 #When output from motion sensor is LOW
+        print ("No intruders")
+        led.off()              #Turn OFF LED
+        sleep(0.5)
+    elif i==1:               #When output from motion sensor is HIGH
+        print ("Intruder detected")
+        camera.capture('/home/pi/RPI Security System/Captured Images/RPI Footage%s.jpg'% j)
+        camera.capture('/home/pi/RPI Security System/Sending/Temp RPI Footage.jpg')
+        led.on()  #Turn ON LED
+        notification()
+        buzzer.on()
+        sleep(1)
+        buzzer.off()
+        sleep(1)
           
                 
-            j = j+1
-            sleep(10)
+        j = j+1
+        sleep(10)
 
 
     
-Guard()
+
+
+
+root = Tk()
+root.title("Cerberus")
+#root.geometry("250x100")
+
+app = Frame(root)
+app.grid()
+
+statusMessage = StringVar()
+statusMessage.set('STATUS: OFFLINE')
+
+start = Button(app, text="ONLINE",fg="GREEN", command=lambda:[triggerOn(),message()])                                                           
+stop = Button(app, text="OFFLINE",fg="RED", command=lambda:[triggerOff(),message()])
+status = Label(root, textvariable = statusMessage)
+logo = ImageTk.PhotoImage(Image.open("/home/pi/Desktop/images.png"))
+logoW = Label(root, image = logo)
+#photoW.pack(side="bottom", fill="both", expand="yes")
+
+
+start.grid()
+stop.grid()
+status.grid()
+logoW.grid()
+
+while True:
+    if idx % 2 == 0:
+        root.update()
+
+    if trigger:
+        statusMessage.set('STATUS: ONLINE')
+        Guard()
+        idx += 1
+    else:
+        statusMessage.set('STATUS: OFFLINE')
+
+print("Done")
+    
+        
+
+
+
+
+
+
 
